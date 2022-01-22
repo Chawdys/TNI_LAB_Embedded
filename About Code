@@ -1,0 +1,5 @@
+- TIM3 for count down time
+- TIM2 and TIM4 for playing alarm music
+- use PB6 to connect with speaker
+- use PB2,PB10-PB15,PC0-PC3 to conect with 7-segments
+- need 2 gpio to connect with 2 button( + and - button )

@@ -43,6 +43,7 @@ void TIM_BASE_Config(uint16_t);
 void TIM_OC_GPIO_Config(void);
 void TIM_OC_Config(uint16_t);
 void TIM_BASE_DurationConfig(void);
+void GPIO_Config(void);
 
 uint16_t cnt = 0;
 uint8_t chk = 0;											
@@ -54,6 +55,7 @@ int main()
 	TIMBaseMain_Config();
 	TIM_OC_Config(ARR_CALCULATE(E_06));
 	TIM_BASE_DurationConfig();
+	GPIO_Config();
 	while(1)
 	{
 		cnt = LL_TIM_GetCounter(TIM3);
@@ -132,8 +134,7 @@ void TIMBaseMain_Config(void)
 	NVIC_SetPriority(TIM3_IRQn,0);
 	NVIC_EnableIRQ(TIM3_IRQn);
 	
-	LL_TIM_EnableCounter(TIM3);
-	LL_TIM_ClearFlag_UPDATE(TIM3);
+	//LL_TIM_EnableCounter(TIM3);
 }
 
 void TIM3_IRQHandler(void)
@@ -232,4 +233,31 @@ void TIM_OC_Config(uint16_t note)
 	/*Start Output Compare in PWM Mode*/
 	LL_TIM_CC_EnableChannel(TIM4, LL_TIM_CHANNEL_CH1);
 	//LL_TIM_EnableCounter(TIM4);
+}
+
+void GPIO_Config(void){
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
+	
+	LL_GPIO_InitTypeDef button;
+	button.Mode = LL_GPIO_MODE_INPUT;
+	button.Pin = LL_GPIO_PIN_0;
+	button.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	button.Pull = LL_GPIO_PULL_NO;
+	button.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+	LL_GPIO_Init(GPIOA, &button);
+	
+	
+	RCC->APB2ENR |= (1<<0);
+	SYSCFG->EXTICR[0] &= ~(15<<0);
+	EXTI->IMR |= (1<<0);
+	EXTI->RTSR |= (1<<0);
+	NVIC_EnableIRQ((IRQn_Type) 6);
+}
+
+void EXTI0_IRQHandler(void){
+	if((EXTI->PR & (1<<0)) == 1){
+		EXTI->PR |= (1<<0);
+		LL_TIM_EnableCounter(TIM3);
+		//chk+=1;
+	}
 }

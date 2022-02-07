@@ -44,21 +44,44 @@ void TIM_OC_GPIO_Config(void);
 void TIM_OC_Config(uint16_t);
 void TIM_BASE_DurationConfig(void);
 void GPIO_Config(void);
+void ltc4727_GPIO_Config(void);
+uint32_t CheckDigit(uint32_t);
+void segment(uint32_t);
+uint32_t CharToUint32_t(char number);
+void play_music(void);
 
-uint16_t cnt = 0;
-uint8_t chk = 0;											
+uint32_t seg[3] = {	 LL_GPIO_PIN_10 | LL_GPIO_PIN_11,
+										 LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_13 | LL_GPIO_PIN_14,
+										 LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_13 | LL_GPIO_PIN_14 };
+uint32_t digit[3] = {LL_GPIO_PIN_0 , LL_GPIO_PIN_1 , LL_GPIO_PIN_2};
+uint32_t cnt = 0;
+uint8_t chk = 0;		
+int i;
+uint8_t ROUND=3;
+uint32_t count_time = 180;
+uint32_t each_round = 60;
 
 int main()
 {
-	
 	SystemClock_Config();
 	TIMBaseMain_Config();
 	TIM_OC_Config(ARR_CALCULATE(E_06));
 	TIM_BASE_DurationConfig();
 	GPIO_Config();
+	ltc4727_GPIO_Config();
+	segment((uint32_t)count_time);
+	count_time+=each_round;
 	while(1)
 	{
 		cnt = LL_TIM_GetCounter(TIM3);
+		cnt = (cnt+1)/1000;
+		segment((uint32_t)count_time-(each_round-cnt));
+		for(i=0;i<3;i++){
+			LL_GPIO_ResetOutputPin(GPIOC, LL_GPIO_PIN_0 | LL_GPIO_PIN_1 | LL_GPIO_PIN_2);//Write 0 to GPIOC
+			LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_13 | LL_GPIO_PIN_14 | LL_GPIO_PIN_15);//Reser all segment
+			LL_GPIO_SetOutputPin(GPIOC, digit[i]);
+			LL_GPIO_SetOutputPin(GPIOB, seg[i]);
+		}
 	}
 }
 
@@ -124,7 +147,8 @@ void TIMBaseMain_Config(void)
 	
 	timbase_initstructure.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
 	timbase_initstructure.CounterMode = LL_TIM_COUNTERMODE_DOWN;
-	timbase_initstructure.Autoreload = 10000-1;
+	//timbase_initstructure.Autoreload = 10000-1; //for test 10 second
+	timbase_initstructure.Autoreload = 60000-1; //for 1 minute
 	timbase_initstructure.Prescaler = 32000-1;
 	
 	LL_TIM_Init(TIM3, &timbase_initstructure);	
@@ -141,28 +165,14 @@ void TIM3_IRQHandler(void)
 {
 	if(LL_TIM_IsActiveFlag_UPDATE(TIM3) == SET)
 	{
-		if(chk==0)
-		{
-			LL_TIM_ClearFlag_UPDATE(TIM3);
-			chk += 1;
-		}
-		else{
 		LL_TIM_ClearFlag_UPDATE(TIM3);
-		LL_TIM_EnableCounter(TIM4); 
-		LL_TIM_EnableCounter(TIM2); 
-		int i=0;
-		while(sheetNote[i] != '\0')
-		{
-			if(LL_TIM_IsActiveFlag_UPDATE(TIM2) == SET)
-			{
-				LL_TIM_ClearFlag_UPDATE(TIM2);
-				LL_TIM_SetAutoReload(TIM4, sheetNote[i]); //Change ARR of Timer PWM
-				i++;
-				LL_TIM_SetCounter(TIM2, 0);
-			}
+		if(chk==ROUND){
+			segment((uint32_t)0);
+			play_music();
+			LL_TIM_DisableCounter(TIM3);
 		}
-		LL_TIM_DisableCounter(TIM3);
-		}
+		chk += 1;
+		count_time -= each_round;
 	}
 }
 
@@ -246,7 +256,6 @@ void GPIO_Config(void){
 	button.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
 	LL_GPIO_Init(GPIOA, &button);
 	
-	
 	RCC->APB2ENR |= (1<<0);
 	SYSCFG->EXTICR[0] &= ~(15<<0);
 	EXTI->IMR |= (1<<0);
@@ -259,5 +268,114 @@ void EXTI0_IRQHandler(void){
 		EXTI->PR |= (1<<0);
 		LL_TIM_EnableCounter(TIM3);
 		//chk+=1;
+	}
+}
+
+void ltc4727_GPIO_Config(void)
+{
+	LL_GPIO_InitTypeDef ltc4727_init;
+	
+	//config ltc4727js
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
+		
+	ltc4727_init.Mode = LL_GPIO_MODE_OUTPUT;
+	ltc4727_init.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	ltc4727_init.Pull = LL_GPIO_PULL_NO;
+	ltc4727_init.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+	ltc4727_init.Pin = LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_13 | LL_GPIO_PIN_14 | LL_GPIO_PIN_15;
+	LL_GPIO_Init(GPIOB, &ltc4727_init);
+		
+	ltc4727_init.Pin = LL_GPIO_PIN_0 | LL_GPIO_PIN_1 | LL_GPIO_PIN_2;
+	LL_GPIO_Init(GPIOC, &ltc4727_init);
+}
+
+uint32_t CheckDigit(uint32_t number)
+{
+    int i;
+    int digit;
+    char seg[4];
+    for(i=0;number!=0;i++)
+    {
+        number = number/10;
+    }
+    return i;
+}
+
+void segment(uint32_t number)
+{
+    uint32_t digit;
+    char numberForShow[3];
+    digit = CheckDigit(number);
+    switch(digit)
+    {
+		case 0:
+        numberForShow[0] = '0';
+        numberForShow[1] = '0';
+        numberForShow[2] = '0';
+        break;
+    case 1:
+        numberForShow[0] = '0';
+        numberForShow[1] = '0';
+        numberForShow[2] = number+'0';
+        break;
+    case 2:
+        numberForShow[0] = '0';
+        numberForShow[1] = (number/10)+'0';
+        numberForShow[2] = (number%10)+'0';
+        break;
+    case 3:
+        numberForShow[0] = (number/100)+'0';
+        numberForShow[1] = (number%100/10)+'0';
+        numberForShow[2] = (number%100%10)+'0';
+        break;
+    }
+		
+		for(int i=0;i<3;i++)
+		{
+			seg[i] = CharToUint32_t(numberForShow[i]);
+		}
+}
+
+uint32_t CharToUint32_t(char number)
+{
+    switch(number)
+    {
+        case '0':
+            return LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_13 | LL_GPIO_PIN_14;
+        case '1':
+            return LL_GPIO_PIN_10 | LL_GPIO_PIN_11;
+        case '2':
+            return LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_12 | LL_GPIO_PIN_13 | LL_GPIO_PIN_15;
+        case '3':
+            return LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_15;
+        case '4':
+            return LL_GPIO_PIN_10 | LL_GPIO_PIN_11 | LL_GPIO_PIN_14 | LL_GPIO_PIN_15;
+        case '5':
+            return LL_GPIO_PIN_2 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_14 | LL_GPIO_PIN_15;
+        case '6':
+            return LL_GPIO_PIN_2 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_13 | LL_GPIO_PIN_14 | LL_GPIO_PIN_15;
+        case '7':
+            return LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_11;
+        case '8':
+            return LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_13 | LL_GPIO_PIN_14 | LL_GPIO_PIN_15;
+        case '9':
+            return LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_14 | LL_GPIO_PIN_15;
+    }
+}
+
+void play_music(void){
+	LL_TIM_EnableCounter(TIM4); 
+	LL_TIM_EnableCounter(TIM2); 
+	int i=0;
+	while(sheetNote[i] != '\0')
+	{
+		if(LL_TIM_IsActiveFlag_UPDATE(TIM2) == SET)
+		{
+			LL_TIM_ClearFlag_UPDATE(TIM2);
+			LL_TIM_SetAutoReload(TIM4, sheetNote[i]); //Change ARR of Timer PWM
+			i++;
+			LL_TIM_SetCounter(TIM2, 0);
+		}
 	}
 }

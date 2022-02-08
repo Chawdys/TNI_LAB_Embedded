@@ -4,3 +4,4 @@
 - use PB2,PB10-PB15,PC0-PC3 to conect with 7-segments
 - use PA0 to start count down
 - use PA1 and PA2 to connect with 2 button( + and - button ) //in future
+- use PB4 , PB5 , PB7 to connect with LED(make project more キラキラ)

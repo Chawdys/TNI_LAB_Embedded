@@ -148,8 +148,8 @@ void TIMBaseMain_Config(void)
 	
 	timbase_initstructure.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
 	timbase_initstructure.CounterMode = LL_TIM_COUNTERMODE_DOWN;
-	timbase_initstructure.Autoreload = 5000-1; //for test 5 second
-	//timbase_initstructure.Autoreload = 60000-1; //for 1 minute
+	//timbase_initstructure.Autoreload = 5000-1; //for test 5 second
+	timbase_initstructure.Autoreload = 60000-1; //for 1 minute
 	timbase_initstructure.Prescaler = 32000-1;
 	
 	LL_TIM_Init(TIM3, &timbase_initstructure);	

@@ -10,6 +10,8 @@
 #include "stm32l152_glass_lcd.h"
 #include "stdio.h"
 
+#define G_05	                    (uint16_t)784
+#define A_05	                    (uint16_t)880
 #define Bb_05	                    (uint16_t)932
 #define C_06	                    (uint16_t)1046	
 #define Db_06	                    (uint16_t)1108
@@ -31,11 +33,9 @@
 /*Macro function for ARR calculation*/
 #define ARR_CALCULATE(N) ((32000000) / ((TIMx_PSC) * (N)))
 
-int sheetNote[] = { ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(A_06),MUTE,ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(C_06),MUTE,ARR_CALCULATE(B_06),MUTE,
-											ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(A_06),MUTE,ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(D_06),MUTE,ARR_CALCULATE(C_06),MUTE,
-											ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(E_06),MUTE,ARR_CALCULATE(C_06),MUTE,ARR_CALCULATE(B_06),MUTE,ARR_CALCULATE(A_06),MUTE,
-											ARR_CALCULATE(F_06),MUTE,ARR_CALCULATE(F_06),MUTE,ARR_CALCULATE(E_06),MUTE,ARR_CALCULATE(C_06),MUTE,ARR_CALCULATE(D_06),MUTE,ARR_CALCULATE(C_06),MUTE,
-											'\0'};
+int sheetNote[] = { ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(D_06),MUTE,ARR_CALCULATE(G_05),MUTE,ARR_CALCULATE(A_05),MUTE,
+										ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(D_06),MUTE,ARR_CALCULATE(G_05),MUTE,ARR_CALCULATE(A_05),MUTE,
+										ARR_CALCULATE(G_06),MUTE,ARR_CALCULATE(D_06),MUTE,ARR_CALCULATE(G_05),MUTE,ARR_CALCULATE(A_05),MUTE,'\0'};
 
 void SystemClock_Config(void);
 void TIMBaseMain_Config(void);
@@ -49,6 +49,7 @@ uint32_t CheckDigit(uint32_t);
 void segment(uint32_t);
 uint32_t CharToUint32_t(char number);
 void play_music(void);
+void LED_TOGGLE(void);
 
 uint32_t seg[3] = {	 LL_GPIO_PIN_10 | LL_GPIO_PIN_11,
 										 LL_GPIO_PIN_2 | LL_GPIO_PIN_10 | LL_GPIO_PIN_11 | LL_GPIO_PIN_12 | LL_GPIO_PIN_13 | LL_GPIO_PIN_14,
@@ -147,8 +148,8 @@ void TIMBaseMain_Config(void)
 	
 	timbase_initstructure.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
 	timbase_initstructure.CounterMode = LL_TIM_COUNTERMODE_DOWN;
-	//timbase_initstructure.Autoreload = 10000-1; //for test 10 second
-	timbase_initstructure.Autoreload = 60000-1; //for 1 minute
+	timbase_initstructure.Autoreload = 5000-1; //for test 5 second
+	//timbase_initstructure.Autoreload = 60000-1; //for 1 minute
 	timbase_initstructure.Prescaler = 32000-1;
 	
 	LL_TIM_Init(TIM3, &timbase_initstructure);	
@@ -248,13 +249,23 @@ void TIM_OC_Config(uint16_t note)
 void GPIO_Config(void){
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
 	
-	LL_GPIO_InitTypeDef button;
-	button.Mode = LL_GPIO_MODE_INPUT;
-	button.Pin = LL_GPIO_PIN_0;
-	button.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-	button.Pull = LL_GPIO_PULL_NO;
-	button.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
-	LL_GPIO_Init(GPIOA, &button);
+	LL_GPIO_InitTypeDef gpio;
+	gpio.Mode = LL_GPIO_MODE_INPUT;
+	gpio.Pin = LL_GPIO_PIN_0;
+	gpio.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	gpio.Pull = LL_GPIO_PULL_NO;
+	gpio.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+	LL_GPIO_Init(GPIOA, &gpio);
+	
+	gpio.Mode = LL_GPIO_MODE_OUTPUT;
+	gpio.Pin = LL_GPIO_PIN_7;
+	LL_GPIO_Init(GPIOB, &gpio);
+	
+	gpio.Pin = LL_GPIO_PIN_5;
+	LL_GPIO_Init(GPIOB, &gpio);
+	
+	gpio.Pin = LL_GPIO_PIN_4;
+	LL_GPIO_Init(GPIOB, &gpio);
 	
 	RCC->APB2ENR |= (1<<0);
 	SYSCFG->EXTICR[0] &= ~(15<<0);
@@ -373,9 +384,16 @@ void play_music(void){
 		if(LL_TIM_IsActiveFlag_UPDATE(TIM2) == SET)
 		{
 			LL_TIM_ClearFlag_UPDATE(TIM2);
+			LED_TOGGLE();
 			LL_TIM_SetAutoReload(TIM4, sheetNote[i]); //Change ARR of Timer PWM
 			i++;
 			LL_TIM_SetCounter(TIM2, 0);
 		}
 	}
+}
+
+void LED_TOGGLE(void){
+	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_7);
+	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_5);
+	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_4);
 }

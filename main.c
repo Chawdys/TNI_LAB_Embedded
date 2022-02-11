@@ -375,6 +375,22 @@ uint32_t CharToUint32_t(char number)
     }
 }
 
+void play_music(void){
+	LL_TIM_EnableCounter(TIM4); 
+	LL_TIM_EnableCounter(TIM2); 
+	int i=0;
+	while(sheetNote[i] != '\0')
+	{
+		if(LL_TIM_IsActiveFlag_UPDATE(TIM2) == SET)
+		{
+			LL_TIM_ClearFlag_UPDATE(TIM2);
+			LED_TOGGLE();
+			LL_TIM_SetAutoReload(TIM4, sheetNote[i]); //Change ARR of Timer PWM
+			i++;
+			LL_TIM_SetCounter(TIM2, 0);
+		}
+	}
+}
 
 void LED_TOGGLE(void){
 	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_7);

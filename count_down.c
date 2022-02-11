@@ -13,7 +13,7 @@
 void SystemClock_Config(void);
 void TIMBaseMain_Config(void);
 
-uint32_t cnt = 0;
+uint32_t count = 0;
 int i;
 
 int main()
@@ -22,8 +22,8 @@ int main()
 	TIMBaseMain_Config();
 	while(1)
 	{
-		cnt = LL_TIM_GetCounter(TIM3);
-		cnt = (cnt+1)/1000;
+		count = LL_TIM_GetCounter(TIM3);
+		count = (count+1)/1000;
 	}
 }
 

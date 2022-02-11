@@ -392,6 +392,10 @@ void play_music(void){
 	}
 }
 
-
+void LED_TOGGLE(void){
+	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_7);
+	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_5);
+	LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_4);
+}
 
 
